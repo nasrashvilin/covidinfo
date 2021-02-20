@@ -1,0 +1,10 @@
+name: server
+title:
+username:
+account: davidsichinava
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3596887
+bundleId: 4249476
+url: https://davidsichinava.shinyapps.io/server/
+when: 1613848347.19712

@@ -1,0 +1,23 @@
+---
+title: "Methodology"
+runtime: shiny
+output:
+  html_document:
+    css: "custom.css"
+---
+
+## მონაცემების წყარო:
+
+NCDC,  ნიკა ნასრაშვილი (@nasrashvilin)
+
+## დიზაინი და დეველოპმენტი:
+
+დავით სიჭინავა (@davidsichinava)
+
+## ლიცენზია
+
+CC-BY-NC
+
+## საწყისი მონაცემები და კოდი:
+
+github.com
