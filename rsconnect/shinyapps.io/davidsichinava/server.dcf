@@ -5,6 +5,6 @@ account: davidsichinava
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 3596887
-bundleId: 4249476
+bundleId: 4256469
 url: https://davidsichinava.shinyapps.io/server/
-when: 1613848347.19712
+when: 1613996555.68863

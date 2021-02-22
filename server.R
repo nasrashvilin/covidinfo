@@ -5,6 +5,14 @@ library(ggiraph)
 library(rgdal)
 library(leaflet)
 library(zoo)
+library(scales)
+library(httr)
+library(rvest)
+library(shinyBS)
+
+################################################ 
+### Translation setup
+################################################
 
 i18n <- Translator$new(translation_json_path='translations/translation.json')
 
@@ -27,7 +35,71 @@ stringency <- readr::read_csv("https://raw.githubusercontent.com/OxCGRT/covid-po
 
 stringency <- stringency[stringency$CountryName == "Georgia", ]
 
-## reactivePoll
+### Facebook humanitarian mobility data
+
+moving_url_part <- GET("https://data.humdata.org/dataset/movement-range-maps")%>%
+  read_html()%>%
+  html_nodes(".ga-download") %>%
+  html_attr('href')
+
+moving_url_part <- moving_url_part[2]
+
+activity_url <- paste0("https://data.humdata.org", moving_url_part)
+
+# Re-downloading takes time, thus I'm keeping already downloaded dat
+# temp <- tempfile()
+# download.file(activity_url, temp, quiet = T)
+# filename <- unzip(temp, list = T)[2, 1]
+# unzip(temp, filename)
+# # note that here I modified fyour original read.table() which did not work
+# fb_mov <- readr::read_delim(filename, delim = "\t")%>%
+#   filter(country=="GEO")
+# unlink(temp)
+
+fb_mov <- read.csv("www/fb_mov.csv")
+
+# Google Mobility data
+# Same here. takes too long
+# google_mobility <- readr::read_csv("https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv") %>%
+google_mobility <- readr::read_csv("www/google_mobility.csv")%>%
+  filter(country_region=="Georgia")%>%
+  select(country_region, metro_area, date, retail_and_recreation_percent_change_from_baseline,
+         grocery_and_pharmacy_percent_change_from_baseline,
+         parks_percent_change_from_baseline,
+         transit_stations_percent_change_from_baseline,
+         workplaces_percent_change_from_baseline,
+         residential_percent_change_from_baseline)
+
+
+################################################ 
+### Define ggplot theme
+################################################
+
+theme_nn <- function () { 
+  theme_minimal(base_size=12) %+replace% # , base_family="Roboto"
+    theme(
+      plot.title = element_text(size=15,hjust=0),
+      plot.subtitle = element_text(size=9, color="grey40", hjust=0),
+      plot.caption = element_text(size=8),
+      axis.title = element_blank(),
+      legend.title = element_blank(),
+      legend.text = element_text(size=8),
+      plot.title.position = "plot",
+      panel.grid.major.y = element_line(color="white", 
+                                        size=.5),
+      panel.grid = element_blank(),
+      legend.position = "none", #c(.15,.9),
+      legend.direction = "horizontal",
+      plot.background = element_rect(fill="#f0f0f0",
+                                     color=NA),
+      axis.text.x = element_text(size=12,color="black", hjust=0),
+      axis.text.y = element_text(size=12, color="black", hjust=1,vjust=-.5,
+                                 margin = margin(l = 0, 
+                                                 r = -10)) #,family="Calibri")
+    )
+}
+
+
 
 server <- function(input, output, session) {
   observeEvent(input$selected_language, {
@@ -37,6 +109,7 @@ server <- function(input, output, session) {
     shiny.i18n::update_lang(session, input$selected_language)
   })
   
+
 ################################################ 
 ### Section Home: 
 ################################################
@@ -197,13 +270,13 @@ tooltip_css <- "background-color:gray;color:white;font-style:bold;
 
 daily_cases  <- 
   detailed %>%
-  mutate(roll_7= rollmean(new_cases, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(new_cases, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, new_cases, tooltip = paste0(date, ": ", new_cases), data_id = new_cases), size=0.4,
                          color=NA, fill = "orange", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="orange")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
   
 
 print(daily_cases)
@@ -215,20 +288,20 @@ output$daily_cases_chart <- renderGirafe(
            xlab(i18n$t("თვეები"))+
            ylab(i18n$t("ახალი შემთხვევების რ-ნობა")),
          options = list(opts_tooltip(css = tooltip_css),
-                        opts_sizing(width = .7) ) 
+                        opts_sizing(width = .7), width_svg=10 ) 
          )
 )
 
 recov_ts  <- 
   detailed %>%
-  mutate(roll_7= rollmean(new_recoveries, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(new_recoveries, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, new_recoveries, tooltip = paste0(date, ": ", new_recoveries),
                            data_id = new_recoveries), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="darkgreen")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(recov_ts)
 
@@ -243,14 +316,14 @@ output$recov_ts_chart <- renderGirafe(
 
 deaths_ts  <- 
   detailed %>%
-  mutate(roll_7= rollmean(new_deaths, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(new_deaths, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, new_deaths, tooltip = paste0(date, ": ", new_deaths),
                            data_id = new_deaths), size=0.4,
                        color=NA, fill = "red", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="red")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(deaths_ts)
 
@@ -265,14 +338,15 @@ output$deaths_ts_chart <- renderGirafe(
 
 tests_ts  <- 
   total %>%
-  mutate(roll_7= rollmean(total_daily_tests, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(total_daily_tests, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, total_daily_tests, tooltip = paste0(date, ": ", round(total_daily_tests, 0)),
                            data_id = total_daily_tests), size=0.4,
                        color=NA, fill = "#808000", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="#808000")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  scale_y_continuous(label=comma)+
+  theme_nn()
 
 print(deaths_ts)
 
@@ -386,7 +460,7 @@ output$cumulative_deaths <- renderValueBox({
 
 output$cumulative_recoveries <- renderValueBox({
   valueBox(
-    paste0(count_total_recovered()), "გამოჯანმრთელდა", icon = icon("heartbeat"),
+    paste0(count_total_recovered()), i18n$t("გამოჯანმრთელდა"), icon = icon("heartbeat"),
     color = "green"
   )
 })
@@ -445,14 +519,15 @@ count_innoculated <- renderText({"0"})
 
 tot_cumulative_cases  <- 
   detailed %>%
-  mutate(roll_7= rollmean(total, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(total, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, total, tooltip = paste0(date, ": ", total),
                            data_id = total), size=0.4,
                        color=NA, fill = "orange", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="orange")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  scale_y_continuous(label=comma)+
+  theme_nn()
 
 print(tot_cumulative_cases)
 
@@ -467,14 +542,15 @@ output$tot_cumulative_cases_ch <- renderGirafe(
 
 tot_cumulative_recovered  <- 
   detailed %>%
-  mutate(roll_7= rollmean(total_rec, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(total_rec, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, total_rec, tooltip = paste0(date, ": ", total_rec),
                            data_id = total_rec), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="darkgreen")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  scale_y_continuous(label=comma)+
+  theme_nn()
 
 print(tot_cumulative_recovered)
 
@@ -483,20 +559,20 @@ output$tot_cumulative_recovered_ch <- renderGirafe(
            xlab(i18n$t("თვეები"))+
            ylab(i18n$t("გამოჯანმრთელებულთა ჯამური რ-ნობა")),
          options = list(opts_tooltip(css = tooltip_css),
-                        opts_sizing(rescale = TRUE) ) 
+                        opts_sizing(rescale = TRUE), width_svg=10 ) 
   )
 )
 
 tot_cumulative_died  <- 
   detailed %>%
-  mutate(roll_7= rollmean(total_deaths, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(total_deaths, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, total_deaths, tooltip = paste0(date, ": ", total_deaths),
                            data_id = total_deaths), size=0.4,
                        color=NA, fill = "red", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="red")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(tot_cumulative_died)
 
@@ -510,14 +586,15 @@ output$tot_cumulative_died_ch <- renderGirafe(
 )
 tot_cumulative_tests  <- 
   total %>%
-  mutate(roll_7= rollmean(total_test, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(total_test, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, total_test, tooltip = paste0(date, ": ", round(total_test, 0)),
                            data_id = total_test), size=0.4,
                        color=NA, fill = "#808000", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="#808000")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  scale_y_continuous(label=comma)+
+  theme_nn()
 
 print(tot_cumulative_tests)
 
@@ -536,14 +613,14 @@ output$tot_cumulative_tests_ch <- renderGirafe(
 
 tot_positive_ratio <-
   total %>%
-  mutate(roll_7= rollmean(total_positive_share, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(total_positive_share, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, total_positive_share, tooltip = paste0(date, ": ", round(total_positive_share, 0)),
                            data_id = total_positive_share), size=0.4,
                        color=NA, fill = "#808000", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="#808000")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(tot_positive_ratio)
 
@@ -558,14 +635,15 @@ output$tot_positive_ratio_ch <- renderGirafe(
 
 tot_pcr_tests  <- 
   total %>%
-  mutate(roll_7= rollmean(daily_PCR_tests, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(daily_PCR_tests, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, daily_PCR_tests, tooltip = paste0(date, ": ", round(daily_PCR_tests, 0)),
                            data_id = daily_PCR_tests), size=0.4,
                        color=NA, fill = "#808000", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="#808000")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  scale_y_continuous(label=comma)+
+  theme_nn()
 
 print(tot_pcr_tests)
 
@@ -580,14 +658,15 @@ output$tot_pcr_tests_ch <- renderGirafe(
 
 tot_rapid_tests  <- 
   total %>%
-  mutate(roll_7= rollmean(daily_rapid_test, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(daily_rapid_test, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, daily_rapid_test, tooltip = paste0(date, ": ", round(daily_rapid_test, 0)),
                            data_id = daily_rapid_test), size=0.4,
                        color=NA, fill = "#808000", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="#808000")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  scale_y_continuous(label=comma)+
+  theme_nn()
 
 print(tot_rapid_tests)
 
@@ -605,14 +684,14 @@ output$tot_rapid_tests_ch <- renderGirafe(
 #################################
 cumul_hospitalized  <- 
   hospitalization %>%
-  mutate(roll_7= rollmean(total_hospitalized, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(total_hospitalized, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, total_hospitalized, tooltip = paste0(date, ": ", round(total_hospitalized, 0)),
                            data_id = total_hospitalized), size=0.4,
                        color=NA, fill = "blue", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="blue")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(cumul_hospitalized)
 
@@ -627,14 +706,14 @@ output$tot_hospitalized_ch <- renderGirafe(
 
 thous_hospitalized  <- 
   hospitalization %>%
-  mutate(roll_7= rollmean(hospitalized_per_100k, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(hospitalized_per_100k, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, hospitalized_per_100k, tooltip = paste0(date, ": ", round(hospitalized_per_100k, 0)),
                            data_id = hospitalized_per_100k), size=0.4,
                        color=NA, fill = "blue", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="blue")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(thous_hospitalized)
 
@@ -649,14 +728,14 @@ output$thous_hospitalized_ch <- renderGirafe(
 
 critical  <- 
   hospitalization %>%
-  mutate(roll_7= rollmean(critical_patients, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(critical_patients, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, critical_patients, tooltip = paste0(date, ": ", round(critical_patients, 0)),
                            data_id = critical_patients), size=0.4,
                        color=NA, fill = "blue", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="blue")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(critical)
 
@@ -671,14 +750,14 @@ output$critical_ch <- renderGirafe(
 
 ventil  <- 
   hospitalization %>%
-  mutate(roll_7= rollmean(on_ventilator, 7, align = "left", fill = NA))%>%
+  mutate(roll_7= rollmean(on_ventilator, 7, align = "right", fill = NA))%>%
   ggplot()+
   geom_col_interactive(aes(date, on_ventilator, tooltip = paste0(date, ": ", round(on_ventilator, 0)),
                            data_id = on_ventilator), size=0.4,
                        color=NA, fill = "blue", alpha=0.5)+
   geom_line(aes(date, roll_7), size=1, color="blue")+
   scale_x_datetime(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(ventil)
 
@@ -698,10 +777,13 @@ output$ventil_ch <- renderGirafe(
 tracking_r_rate  <- tracking_r %>%
   mutate(date=as.Date(Date))%>%
   ggplot()+
-  geom_line_interactive(aes(date, R, tooltip=R), color = "red", alpha=0.5, size=1)+
+  geom_line(aes(date, R), color = "red", size=1)+
+  geom_col_interactive(aes(date, R, tooltip = paste0(date, ": ", round(R, 2)),
+                           data_id = R), size=0.4,
+                       color=NA, fill = "red", alpha=0.2)+
   geom_hline(yintercept = 1, color="grey")+
   scale_x_date(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(tracking_r_rate)
 
@@ -729,7 +811,7 @@ tracking_stringency  <- stringency %>%
   geom_line(aes(date, StringencyIndexForDisplay), size=1, color="darkblue")+
   geom_hline(yintercept = 1, color="grey")+
   scale_x_date(date_labels = "%m/%Y")+
-  theme_minimal()
+  theme_nn()
 
 print(tracking_stringency)
 
@@ -743,7 +825,242 @@ output$tracking_stringency_output <- renderGirafe(
 )
 ## 
 
+## Google mobility
 
+grocs <- google_mobility%>%
+  mutate(date=as.Date(date))%>%
+  arrange(desc(date))%>%
+  mutate(average=rollmean(grocery_and_pharmacy_percent_change_from_baseline, mean, k=7, fill=NA,
+                          align = "right", partial=T))%>%
+  ggplot(aes(date, average))+
+  geom_col_interactive(aes(tooltip = paste0(average, ": ", round(average, 2))), size=0.4,
+                       color=NA, fill = "darkred", alpha=0.2, position="identity")+
+  scale_y_continuous(labels = function(x) paste0(x, "%"))+
+  geom_path(aes(date, average), col="darkred", size=1)+
+  scale_x_date(date_labels = "%m/%y")+
+  ylim(-100, 50)+
+  theme_nn()
+
+output$grocs_ch <- renderGirafe(
+  girafe(ggobj = grocs+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("საკვები და მედიკამენტები")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+parks <- google_mobility%>%
+  mutate(date=as.Date(date))%>%
+  arrange(desc(date))%>%
+  mutate(average=rollmean(parks_percent_change_from_baseline, mean, k=7, fill=NA,
+                          align = "right", partial=T))%>%
+  ggplot(aes(date, average))+
+  geom_col_interactive(aes(tooltip = paste0(average, ": ", round(average, 2))), size=0.4,
+                       color=NA, fill = "darkred", alpha=0.2, position="identity")+
+  scale_y_continuous(labels = function(x) paste0(x, "%"))+
+  geom_path(aes(date, average), col="darkred", size=1)+
+  scale_x_date(date_labels = "%m/%y")+
+  ylim(-100, 50)+
+  theme_nn()
+
+output$parks_ch <- renderGirafe(
+  girafe(ggobj = parks+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("პარკები")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+ret_rec <- google_mobility%>%
+  mutate(date=as.Date(date))%>%
+  arrange(desc(date))%>%
+  mutate(average=rollmean(retail_and_recreation_percent_change_from_baseline, mean, k=7, fill=NA,
+                          align = "right", partial=T))%>%
+  ggplot(aes(date, average))+
+  geom_col_interactive(aes(tooltip = paste0(average, ": ", round(average, 2))), size=0.4,
+                       color=NA, fill = "darkred", alpha=0.2, position="identity")+
+  scale_y_continuous(labels = function(x) paste0(x, "%"))+
+  geom_path(aes(date, average), col="darkred", size=1)+
+  scale_x_date(date_labels = "%m/%y")+
+  ylim(-100, 50)+
+  theme_nn()
+
+output$ret_rec_ch <- renderGirafe(
+  girafe(ggobj = ret_rec+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("საყიდლები, გართობა, დასვენება")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+workplace <- google_mobility%>%
+  mutate(dtilate=as.Date(date))%>%
+  arrange(desc(date))%>%
+  mutate(average=rollmean(workplaces_percent_change_from_baseline, mean, k=7, fill=NA,
+                          align = "right", partial=T))%>%
+  ggplot(aes(date, average))+
+  geom_col_interactive(aes(tooltip = paste0(average, ": ", round(average, 2))), size=0.4,
+                       color=NA, fill = "darkred", alpha=0.2, position="identity")+
+  scale_y_continuous(labels = function(x) paste0(x, "%"))+
+  geom_path(aes(date, average), col="darkred", size=1)+
+  scale_x_date(date_labels = "%m/%y")+
+  ylim(-100, 50)+
+  theme_nn()
+
+output$workplace_ch <- renderGirafe(
+  girafe(ggobj = workplace+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("სამუშაო ადგილები")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+transit <- google_mobility%>%
+  mutate(date=as.Date(date))%>%
+  arrange(desc(date))%>%
+  mutate(average=rollmean(transit_stations_percent_change_from_baseline, mean, k=7, fill=NA,
+                          align = "right", partial=T))%>%
+  ggplot(aes(date, average))+
+  geom_col_interactive(aes(tooltip = paste0(average, ": ", round(average, 2))), size=0.4,
+                       color=NA, fill = "darkred", alpha=0.2, position="identity")+
+  scale_y_continuous(labels = function(x) paste0(x, "%"))+
+  geom_path(aes(date, average), col="darkred", size=1)+
+  scale_x_date(date_labels = "%m/%y")+
+  ylim(-100, 50)+
+  theme_nn()
+
+output$transit_ch <- renderGirafe(
+  girafe(ggobj = transit+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("ტრანსპორტით გადაადგილება")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+# residential <- google_mobility%>%
+#   filter(type == "residential_percent_change_from_baseline")%>%
+#   arrange(desc(date))%>%
+#   mutate(average=rollmean(data, 7, align = "right", fill = NA))%>%
+#   ggplot()+
+#   geom_line(aes(date, average), col="darkred", size=1, lineend = "round")+
+#   geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
+#                            data_id = average), size=0.4,
+#                        color=NA, fill = "darkred", alpha=0.2)+
+#   scale_y_continuous(labels = function(x) paste0(x, "%"))+
+#   scale_x_date(date_labels = "%m/%y")+
+#   ylim(-100, 50)+
+#   theme_nn()
+# 
+# output$residential_ch <- renderGirafe(
+#   girafe(ggobj = transit+
+#            xlab(i18n$t("თვეები"))+
+#            ylab(i18n$t("საცხოვრებელი ადგილები")),
+#          options = list(opts_tooltip(css = tooltip_css),
+#                         opts_sizing(width = .7) ) 
+#   )
+# )
+
+### Facebook mobility: three facets for Tbilisi, Batumi, Kutaisi
+
+fb_tbilisi <- fb_mov%>%
+  filter(polygon_name %in% c("Tbilisi"))%>%
+  select(ds,all_day_bing_tiles_visited_relative_change, 
+         polygon_name)%>%
+  group_by(polygon_name) %>% 
+  mutate(average=rollmean(all_day_bing_tiles_visited_relative_change, 
+                          mean, k=7, fill=NA,
+                          align = "right", partial=T),
+         date=as.Date(ds))%>%
+  ggplot()+
+  geom_line(aes(date,average, color="darkgreen"), size=1)+
+  geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
+                           data_id = average), size=0.4,
+                       color=NA, fill = "darkgreen", alpha=0.2)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"))+
+  scale_x_date(date_labels = "%m/%Y")+
+  ylim(-1, 0.5)+
+  theme_nn()
+
+output$fb_tbilisi_ch <- renderGirafe(
+  girafe(ggobj = fb_tbilisi+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("მობილობა")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+fb_batumi <- fb_mov%>%
+  filter(polygon_name %in% c("Batumi"))%>%
+  select(ds,all_day_bing_tiles_visited_relative_change, 
+         polygon_name)%>%
+  group_by(polygon_name) %>% 
+  mutate(average=rollmean(all_day_bing_tiles_visited_relative_change, 
+                          mean, k=7, fill=NA,
+                          align = "right", partial=T),
+         date=as.Date(ds))%>%
+  ggplot()+
+  geom_line(aes(date,average, color="darkgreen"), size=1)+
+  geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
+                           data_id = average), size=0.4,
+                       color=NA, fill = "darkgreen", alpha=0.2)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"))+
+  scale_x_date(date_labels = "%m/%Y")+
+  ylim(-1, 0.5)+
+  theme_nn()
+
+output$fb_batumi_ch <- renderGirafe(
+  girafe(ggobj = fb_batumi+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("მობილობა")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+fb_kutaisi <- fb_mov%>%
+  filter(polygon_name %in% c("Kutaisi"))%>%
+  select(ds,all_day_bing_tiles_visited_relative_change, 
+         polygon_name)%>%
+  group_by(polygon_name) %>% 
+  mutate(average=rollmean(all_day_bing_tiles_visited_relative_change, 
+                          mean, k=7, fill=NA,
+                          align = "right", partial=T),
+         date=as.Date(ds))%>%
+  ggplot()+
+  geom_line(aes(date,average, color="darkgreen"), size=1)+
+  geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
+                           data_id = average), size=0.4,
+                       color=NA, fill = "darkgreen", alpha=0.2)+
+  scale_color_brewer(palette = "Dark2")+
+  scale_y_continuous(labels = function(x) paste0(x*100, "%"))+
+  scale_x_date(date_labels = "%m/%Y")+
+  ylim(-1, 0.5)+
+  theme_nn()
+
+output$fb_kutaisi_ch <- renderGirafe(
+  girafe(ggobj = fb_kutaisi+
+           xlab(i18n$t("თვეები"))+
+           ylab(i18n$t("მობილობა")),
+         options = list(opts_tooltip(css = tooltip_css),
+                        opts_sizing(width = .7) ) 
+  )
+)
+
+output$title_fb <- renderUI({tipify(bsButton("h56", icon("question-circle"),
+                                            size = "default"),
+                            i18n$t("Facebook-ის მობილობის მონაცემები გვიჩვენებს, წინა კვირასთან შედარებით, გაიზარდა თუ შემცირდა ამა თუ იმ კონკრეტულ გეოგრაფიულ არეალში გადაადგილება"))})
+
+output$title_gg <- renderUI({tipify(bsButton("h57", icon("question-circle"),
+                                             size = "default"),
+                                    i18n$t("Google-ის მობილობის მონაცემები გვიჩვენებს, წინა კვირასთან შედარებით, გაიზარდა თუ შემცირდა ამა თუ იმ კონკრეტული დანიშნულებით გადაადგილება"))})
 
 
 } ### This ends server part

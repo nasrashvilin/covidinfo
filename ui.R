@@ -7,7 +7,10 @@ library(rgdal)
 library(leaflet)
 library(httr)
 library(zoo)
-
+library(scales)
+library(httr)
+library(rvest)
+library(shinyBS)
 
 # library(cronR)
 
@@ -32,6 +35,7 @@ todays_date <- src %>%
     pull(date)
 
 ui <- fluidPage(
+  # tags$head(includeHTML(("google-analytics.html"))),
   shiny.i18n::usei18n(i18n),
   tags$div(style = "float: left;"
   ),
@@ -68,10 +72,10 @@ ui <- fluidPage(
                tabName = "hospitalization"),
       menuItem(h5(i18n$t("სხვა ინდიკატორები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
                tabName = "other_indicators"),
-      menuItem(h5(i18n$t("შედარება"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
-               tabName = "comparison"),
+      # menuItem(h5(i18n$t("შედარება"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+      #          tabName = "comparison"),
       menuItem(h5(i18n$t("მონაცემების წყარო"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
-               tabName = "methodology")
+               tabName = "data_source")
     )
   ),
   shinydashboard::dashboardBody(
@@ -143,7 +147,7 @@ ui <- fluidPage(
 
 tags$head(
   # Custom CSS
-  tags$link(rel="shortcut icon", href="favicon.png"),
+  # tags$link(rel="shortcut icon", href="favicon.png"),
   tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
   tags$style(HTML(
     '.tabbable > .nav > li > a                  {color:black; font-family: "BPG_upper"}'
@@ -153,7 +157,7 @@ shinydashboard::tabItems(
 tabItem(
     tabName = "home",
     fluidRow(
-      box(
+      shinydashboard::box(
         title=h5(todays_date, style="font-size: '4px'; font-family: 'BPG_upper';"),
         
         width = 12,
@@ -185,7 +189,7 @@ tabItem(
 tabItem(
     tabName = "total_data",
     fluidRow(
-      box(
+      shinydashboard::box(
         title=h5(todays_date, style="font-size: '4px'; font-family: 'BPG_upper';"),
         width = 12,
         valueBoxOutput("cumulative_cases"),
@@ -199,7 +203,7 @@ tabItem(
         height = "500",
         width = 12,
         tabPanel(h5(i18n$t("შემთხვევები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_cumulative_cases_ch", height = 400)),
-        tabPanel(h5(i18n$t("გამოჯანმრთელდა"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_cumulative_recovered_ch", height = 400)),
+        tabPanel(h5(i18n$t("გამოჯანმრთელდა"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_cumulative_recovered_ch", height = 400, width=1000)),
         tabPanel(h5(i18n$t("გარდაიცვალა"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_cumulative_died_ch", height = 400))
       )
     )
@@ -212,7 +216,7 @@ tabItem(
       width = 12,
       tabPanel(h5(i18n$t("ყოველდღიურად"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tests_ts_chart", height = 400)),
       tabPanel(h5(i18n$t("ჯამურად"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_cumulative_tests_ch", height = 400)),
-      tabPanel(h5(i18n$t("დადებითი წილი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_positive_ratio_ch", height = 400)),
+      tabPanel(h5(i18n$t("დადებითი ტესტების წილი, %"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_positive_ratio_ch", height = 400)),
       tabPanel(h5(i18n$t("PCR"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_pcr_tests_ch", height = 400)),
       tabPanel(h5(i18n$t("სწრაფი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("tot_rapid_tests_ch", height = 400))
     )
@@ -235,28 +239,84 @@ tabItem(
 tabItem(
   tabName = "other_indicators",
   fluidRow(
-    box(
+    shinydashboard::box(
       width=6,
       title=h5(i18n$t("რეპროდუქციის ინდექსი"), style="font-size: '4px'; font-family: 'BPG_upper';  text-transform: uppercase;"),
-      "რეპროდუქციის ეფექტური ინდექსი (R) წარმოადგენს ე.წ. მეორადი შემთხვევების რაოდენობას, რომელიც დაკავშირებულია დაავადების თითოეულ უკვე არსებულ შემთხვევას. დაავადებულთა რაოდენობის შესამცირებლად, R 1-ზე ნაკლები უნდა იყოს",
+      i18n$t("რეპროდუქციის ეფექტური ინდექსი (R) წარმოადგენს ე.წ. მეორადი შემთხვევების რაოდენობას, რომელიც დაკავშირებულია დაავადების თითოეულ უკვე არსებულ შემთხვევას. დაავადებულთა რაოდენობის შესამცირებლად, R 1-ზე ნაკლები უნდა იყოს"),
       girafeOutput("tracking_r_output", height = 400)
     ),
-    box(
+    shinydashboard::box(
       width=6,
       title=h5(i18n$t("სიმკაცრის ინდექსი"), style="font-size: '4px'; font-family: 'BPG_upper';  text-transform: uppercase;"),
-      "სიმკაცრის ინდექსი წარმოადგენს რიცხვს, რომელიც გვიჩვენებს, რამდენად მკაცრია თუ არა ვირუსთან დაკავშირებული შეზღუდვები. 100-თან ახლოს მყოფი მნიშვნელობები მკაცრ შეზღუდვებზე მიანიშნებს",
+      i18n$t("სიმკაცრის ინდექსი წარმოადგენს რიცხვს, რომელიც გვიჩვენებს, თუ რამდენად მკაცრია ვირუსთან დაკავშირებული შეზღუდვები. 100-თან ახლოს მყოფი მნიშვნელობები მკაცრ შეზღუდვებზე მიანიშნებს"),
       girafeOutput("tracking_stringency_output", height = 400)
+    ),
+    tabBox(
+      title = uiOutput("title_fb"),
+      height = "500",
+      width = 6,
+      tabPanel(h5(i18n$t("თბილისი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("fb_tbilisi_ch", height = 400)),
+      tabPanel(h5(i18n$t("ბათუმი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("fb_batumi_ch", height = 400)),
+      tabPanel(h5(i18n$t("ქუთაისი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("fb_kutaisi_ch", height = 400))
+    ),
+    tabBox(
+      title = uiOutput("title_gg"),
+      height = "500",
+      width = 6,
+      tabPanel(h5(i18n$t("საკვები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("grocs_ch", height = 400)),
+      tabPanel(h5(i18n$t("პარკი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("parks_ch", height = 400)),
+      tabPanel(h5(i18n$t("საყიდლები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("ret_rec_ch", height = 400)),
+      tabPanel(h5(i18n$t("სამუშაო"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("workplace_ch", height = 400)),
+      tabPanel(h5(i18n$t("ტრანსპორტი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("transit_ch", height = 400))
+      # tabPanel(h5(i18n$t("შინ"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("residential_ch", height = 400))
     )
   )
 ),
-tabItem(
-  tabName = "comparison",
-  fluidRow()
-),
-tabItem(tabName = "methodology",
-        includeMarkdown("www/methods.Rmd")
-        
+# tabItem(
+#   tabName = "comparison",
+#   fluidRow()
+# ),
+tabItem(tabName = "data_source",
+        fluidRow(
+        # includeMarkdown("www/methods.Rmd")
+          shinydashboard::box(
+            title=h5(i18n$t("მონაცემები დაავადების გავრცელების შესახებ"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+            width = 12,
+            i18n$t("საქართველოს მთავრობა"), br(), i18n$t("საქართველოს დაავადებათა კონტროლის ეროვნული ცენტრი")
+            ),
+          shinydashboard::box(
+            title=h5(i18n$t("რეპროდუქციის ინდექსი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+            width = 12,
+            "Arroyo-Marioli F, Bullano F, Kucinskas S, Rondón-Moreno C (2021) Tracking of COVID-19: A new real-time estimation using the Kalman filter. PLoS ONE 16(1): e0244474. https://doi.org/10.1371/journal.pone.0244474"
+          ),
+          shinydashboard::box(
+            title=h5(i18n$t("სიმკაცრის ინდექსი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+            width = 12,
+            "The Oxford COVID-19 Government Response Tracker (OxCGRT)"
+          ),
+          shinydashboard::box(
+            title=h5(i18n$t("მობილობა (Facebook)"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+            width = 12,
+            "https://data.humdata.org/dataset/movement-range-maps"
+          ),
+          shinydashboard::box(
+            title=h5(i18n$t("მობილობა (Google)"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+            width = 12,
+            "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"
+          ),
+          shinydashboard::box(
+            title=h5(i18n$t("რეპლიკაციის კოდი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+            width = 12,
+            "https://github.com/davidsichinava/covidinfo"
+          ),
+          shinydashboard::box(
+            title=h5(i18n$t("პროექტის ავტორები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+            width = 12,
+            i18n$t("დავით სიჭინავა"), ": @davidsichinava, ", i18n$t("ნიკა ნასრაშვილი"), ": @nasrashvilin"
+          )
+        )
 )
 ),
+),
+),
 )
-))
