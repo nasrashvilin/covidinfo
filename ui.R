@@ -11,8 +11,10 @@ library(scales)
 library(httr)
 library(rvest)
 library(shinyBS)
+library(readxl)
 
 # library(cronR)
+options(shiny.sanitize.errors = FALSE)
 
 i18n <- Translator$new(translation_json_path='translations/translation.json')
 
@@ -22,11 +24,13 @@ i18n$set_translation_language('ქართული')
 
 url <- "https://www.dropbox.com/scl/fi/5f734v40u5t8pogvvcbpa/covid_data_georgia.xlsx?dl=1&rlkey=iwbmp1y34u30e9bri8n7y5hku"
 
-httr::GET(url, write_disk(path = "www/src.xlsx", overwrite = T))
+GET(url, write_disk(tf <- tempfile(fileext = ".xlsx")))
+
+src <- read_excel(tf, 1L)
+
+unlink(tf)
 
 # httr::GET(url, write_disk(path = "www/src.xlsx", overwrite = T))
-
-src <- readxl::read_excel("www/src.xlsx", sheet=1)
 
 todays_date <- src %>%
     mutate(lubridate::as_date(date))%>%

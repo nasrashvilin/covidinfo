@@ -9,10 +9,14 @@ library(scales)
 library(httr)
 library(rvest)
 library(shinyBS)
+library(readxl)
 
 ################################################ 
 ### Translation setup
 ################################################
+options(shiny.sanitize.errors = FALSE)
+
+pdf(NULL)
 
 i18n <- Translator$new(translation_json_path='translations/translation.json')
 
@@ -22,10 +26,14 @@ i18n$set_translation_language('ქართული')
 ### Data setup
 ################################################
 
-total <- readxl::read_excel("www/src.xlsx", sheet="total")
-detailed <- readxl::read_excel("www/src.xlsx", sheet="detailed")
-regions <- readxl::read_excel("www/src.xlsx", sheet="regions")
-hospitalization <- readxl::read_excel("www/src.xlsx", sheet="hospitalization")
+url <- "https://www.dropbox.com/scl/fi/5f734v40u5t8pogvvcbpa/covid_data_georgia.xlsx?dl=1&rlkey=iwbmp1y34u30e9bri8n7y5hku"
+
+GET(url, write_disk(tf1 <- tempfile(fileext = ".xlsx")))
+
+total <- read_excel(tf1, "total")
+detailed <- read_excel(tf1, "detailed")
+regions <- read_excel(tf1, "regions")
+hospitalization <- read_excel(tf1, "hospitalization")
 
 tracking_r <- readr::read_csv("https://raw.githubusercontent.com/crondonm/TrackingR/main/Estimates-Database/database.csv") %>%
   filter(`Country/Region` == "Georgia")%>%
@@ -47,21 +55,23 @@ moving_url_part <- moving_url_part[2]
 activity_url <- paste0("https://data.humdata.org", moving_url_part)
 
 # Re-downloading takes time, thus I'm keeping already downloaded dat
-# temp <- tempfile()
-# download.file(activity_url, temp, quiet = T)
-# filename <- unzip(temp, list = T)[2, 1]
-# unzip(temp, filename)
-# # note that here I modified fyour original read.table() which did not work
-# fb_mov <- readr::read_delim(filename, delim = "\t")%>%
-#   filter(country=="GEO")
-# unlink(temp)
 
-fb_mov <- read.csv("www/fb_mov.csv")
+GET(activity_url, write_disk(tf2 <- tempfile(fileext = ".zip")))
+
+filename <- unzip(tf2, list = T)[2, 1]
+
+# note that here I modified fyour original read.table() which did not work
+fb_mov <- readr::read_delim(unz(tf2, filename), delim = "\t")%>%
+  filter(country=="GEO")
+
+unlink(tf1)
+
+unlink(tf2)
 
 # Google Mobility data
 # Same here. takes too long
-# google_mobility <- readr::read_csv("https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv") %>%
-google_mobility <- readr::read_csv("www/google_mobility.csv")%>%
+google_mobility <- readr::read_csv("https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv") %>%
+# google_mobility <- readr::read_csv("www/google_mobility.csv")%>%
   filter(country_region=="Georgia")%>%
   select(country_region, metro_area, date, retail_and_recreation_percent_change_from_baseline,
          grocery_and_pharmacy_percent_change_from_baseline,
@@ -981,7 +991,7 @@ fb_tbilisi <- fb_mov%>%
   geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
                            data_id = average), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.2)+
-  scale_color_brewer(palette = "Dark2")+
+  
   scale_y_continuous(labels = function(x) paste0(x*100, "%"))+
   scale_x_date(date_labels = "%m/%Y")+
   ylim(-1, 0.5)+
@@ -1010,7 +1020,7 @@ fb_batumi <- fb_mov%>%
   geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
                            data_id = average), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.2)+
-  scale_color_brewer(palette = "Dark2")+
+  
   scale_y_continuous(labels = function(x) paste0(x*100, "%"))+
   scale_x_date(date_labels = "%m/%Y")+
   ylim(-1, 0.5)+
@@ -1039,7 +1049,7 @@ fb_kutaisi <- fb_mov%>%
   geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
                            data_id = average), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.2)+
-  scale_color_brewer(palette = "Dark2")+
+  
   scale_y_continuous(labels = function(x) paste0(x*100, "%"))+
   scale_x_date(date_labels = "%m/%Y")+
   ylim(-1, 0.5)+
