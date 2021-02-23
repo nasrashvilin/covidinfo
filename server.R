@@ -43,42 +43,26 @@ stringency <- readr::read_csv("https://raw.githubusercontent.com/OxCGRT/covid-po
 
 stringency <- stringency[stringency$CountryName == "Georgia", ]
 
+
 ### Facebook humanitarian mobility data
 
-moving_url_part <- GET("https://data.humdata.org/dataset/movement-range-maps")%>%
-  read_html()%>%
-  html_nodes(".ga-download") %>%
-  html_attr('href')
+url_fb <- "https://www.dropbox.com/s/wsz5yd5ryemnju0/fb_mov.xlsx?dl=1"
 
-moving_url_part <- moving_url_part[2]
+GET(url_fb, write_disk(tf2 <- tempfile(fileext = ".xlsx")))
 
-activity_url <- paste0("https://data.humdata.org", moving_url_part)
+fb_mov <- read_excel(tf2, 1L)
 
-# Re-downloading takes time, thus I'm keeping already downloaded dat
-
-GET(activity_url, write_disk(tf2 <- tempfile(fileext = ".zip")))
-
-filename <- unzip(tf2, list = T)[2, 1]
-
-# note that here I modified fyour original read.table() which did not work
-fb_mov <- readr::read_delim(unz(tf2, filename), delim = "\t")%>%
-  filter(country=="GEO")
-
-unlink(tf1)
-
-unlink(tf2)
 
 # Google Mobility data
 # Same here. takes too long
-google_mobility <- readr::read_csv("https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv") %>%
-# google_mobility <- readr::read_csv("www/google_mobility.csv")%>%
-  filter(country_region=="Georgia")%>%
-  select(country_region, metro_area, date, retail_and_recreation_percent_change_from_baseline,
-         grocery_and_pharmacy_percent_change_from_baseline,
-         parks_percent_change_from_baseline,
-         transit_stations_percent_change_from_baseline,
-         workplaces_percent_change_from_baseline,
-         residential_percent_change_from_baseline)
+
+url_fb <- "https://www.dropbox.com/s/wsz5yd5ryemnju0/fb_mov.xlsx?dl=1"
+
+url_gl <- "https://www.dropbox.com/s/97uyhp7l197dz5l/gl_mov.xlsx?dl=1"
+
+GET(url_gl, write_disk(tf3 <- tempfile(fileext = ".xlsx")))
+
+google_mobility <- read_excel(tf3, 1L)
 
 
 ################################################ 

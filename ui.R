@@ -39,7 +39,7 @@ todays_date <- src %>%
     pull(date)
 
 ui <- fluidPage(
-  # tags$head(includeHTML(("google-analytics.html"))),
+  tags$head(includeHTML(("google-analytics.html"))),
   shiny.i18n::usei18n(i18n),
   tags$div(style = "float: left;"
   ),
