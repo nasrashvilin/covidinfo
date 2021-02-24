@@ -35,13 +35,9 @@ detailed <- read_excel(tf1, "detailed")
 regions <- read_excel(tf1, "regions")
 hospitalization <- read_excel(tf1, "hospitalization")
 
-tracking_r <- readr::read_csv("https://raw.githubusercontent.com/crondonm/TrackingR/main/Estimates-Database/database.csv") %>%
-  filter(`Country/Region` == "Georgia")%>%
-  filter(days_infectious == 7)
+tracking_r <- readr::read_csv("https://www.dropbox.com/s/ngupupgcr9d3pre/tracking_r.csv?dl=1")
 
-stringency <- readr::read_csv("https://raw.githubusercontent.com/OxCGRT/covid-policy-tracker/master/data/OxCGRT_latest.csv")
-
-stringency <- stringency[stringency$CountryName == "Georgia", ]
+stringency <- readr::read_csv("https://www.dropbox.com/s/g54h2p54hxzoq13/stringency.csv?dl=1")
 
 
 ### Facebook humanitarian mobility data
@@ -971,7 +967,7 @@ fb_tbilisi <- fb_mov%>%
                           align = "right", partial=T),
          date=as.Date(ds))%>%
   ggplot()+
-  geom_line(aes(date,average, color="darkgreen"), size=1)+
+  geom_line(aes(date,average), color="darkgreen", size=1)+
   geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
                            data_id = average), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.2)+
@@ -1000,7 +996,7 @@ fb_batumi <- fb_mov%>%
                           align = "right", partial=T),
          date=as.Date(ds))%>%
   ggplot()+
-  geom_line(aes(date,average, color="darkgreen"), size=1)+
+  geom_line(aes(date,average), color="darkgreen", size=1)+
   geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
                            data_id = average), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.2)+
@@ -1029,7 +1025,7 @@ fb_kutaisi <- fb_mov%>%
                           align = "right", partial=T),
          date=as.Date(ds))%>%
   ggplot()+
-  geom_line(aes(date,average, color="darkgreen"), size=1)+
+  geom_line(aes(date,average), color="darkgreen", size=1)+
   geom_col_interactive(aes(date, average, tooltip = paste0(date, ": ", round(average, 2)),
                            data_id = average), size=0.4,
                        color=NA, fill = "darkgreen", alpha=0.2)+
