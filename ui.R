@@ -20,38 +20,12 @@ i18n <- Translator$new(translation_json_path='translations/translation.json')
 
 i18n$set_translation_language('ქართული')
 
-## setwd("D:\\Dropbox\\My projects\\scratchpad\\cov_shiny\\server")
-
-url <- "https://www.dropbox.com/scl/fi/5f734v40u5t8pogvvcbpa/covid_data_georgia.xlsx?dl=1&rlkey=iwbmp1y34u30e9bri8n7y5hku"
-
-GET(url, write_disk(tf <- tempfile(fileext = ".xlsx")))
-
-src <- read_excel(tf, 1L)
-
-unlink(tf)
-
-# httr::GET(url, write_disk(path = "www/src.xlsx", overwrite = T))
-
-todays_date <- src %>%
-    mutate(lubridate::as_date(date))%>%
-    arrange(desc(date))%>%
-    slice(1)%>%
-    pull(date)
-
 ui <- fluidPage(
   tags$head(includeHTML(("google-analytics.html"))),
   shiny.i18n::usei18n(i18n),
   tags$div(style = "float: left;"
   ),
   dashboardPage(
-  
-#  shiny.i18n::usei18n(i18n),
-#  tags$div(style = "float: right;",
-#      selectInput('selected_language',
-#                  i18n$t("Change language"),
-#                  choices = i18n$get_languages(),
-#                  selected = i18n$get_key_translation())
-#  ),
   title="კორონავირუსი საქართველოში",
   shinydashboard::dashboardHeader(
     title = span(
@@ -66,7 +40,7 @@ ui <- fluidPage(
                   i18n$t("ენის გადართვა"),
                   choices = i18n$get_languages(),
                   selected = i18n$get_key_translation()),
-      menuItem(h5(i18n$t("თავფურცელი"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+      menuItem(h5(i18n$t("თავფურცელი"), icon="search", style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
                tabName = "home"),
       menuItem(h5(i18n$t("ჯამური მონაცემები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
                tabName = "total_data"),
@@ -150,20 +124,27 @@ ui <- fluidPage(
   ),
 
 tags$head(
-  # Custom CSS
   # tags$link(rel="shortcut icon", href="favicon.png"),
   tags$link(rel = "stylesheet", type = "text/css", href = "custom.css"),
   tags$style(HTML(
     '.tabbable > .nav > li > a                  {color:black; font-family: "BPG_upper"}'
   ))
 ),
+# tags$span(textOutput("updated_at"), style = "
+#               position:absolute;
+#               bottom:0;
+#               width:100%;
+#               height:10px;
+#               color: black;
+#               padding: 10px;
+#               font-family: 'BPG_lower';
+#               z-index: 1000;"),
 shinydashboard::tabItems(
 tabItem(
     tabName = "home",
     fluidRow(
       shinydashboard::box(
-        title=h5(todays_date, style="font-size: '4px'; font-family: 'BPG_upper';"),
-        
+        title=h5(textOutput("todays_date_out"), style="font-size: '4px'; font-family: 'BPG_upper';"),
         width = 12,
         infoBoxOutput("new_cases"),
         valueBoxOutput("new_deaths"),
@@ -173,7 +154,8 @@ tabItem(
         valueBoxOutput("new_critical"),
         valueBoxOutput("new_tests"),
         valueBoxOutput("new_r"),
-        valueBoxOutput("new_innoculated")
+        valueBoxOutput("new_innoculated"),
+        h6(textOutput("updated_at"), style="font-size: '2px'; font-family: 'BPG_lower';")
       )
     ),
     fluidRow(
@@ -194,7 +176,7 @@ tabItem(
     tabName = "total_data",
     fluidRow(
       shinydashboard::box(
-        title=h5(todays_date, style="font-size: '4px'; font-family: 'BPG_upper';"),
+        title=h5(textOutput("todays_date"), style="font-size: '4px'; font-family: 'BPG_upper';"),
         width = 12,
         valueBoxOutput("cumulative_cases"),
         valueBoxOutput("cumulative_deaths"),
