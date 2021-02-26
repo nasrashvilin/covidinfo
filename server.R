@@ -43,8 +43,9 @@ theme_nn <- function () {
       legend.direction = "horizontal",
       plot.background = element_rect(fill="#f0f0f0",
                                      color=NA),
+      strip.text = element_text(hjust=0),
       axis.text.x = element_text(size=12,color="black", hjust=0),
-      axis.text.y = element_text(size=12, color="black", hjust=1,vjust=-.5,
+      axis.text.y = element_text(size=12, color="black", hjust=1,vjust=.5),#,
                                  margin = margin(l = 0, 
                                                  r = -10)) #,family="Calibri")
     )
@@ -77,6 +78,7 @@ server <- function(input, output, session) {
     detailed <- read.csv("www//data//detailed.csv")%>%mutate(date=lubridate::as_date(date))
     regions <- read.csv("www//data//regions.csv")%>%mutate(date=lubridate::as_date(date))
     hospitalization <- read.csv("www//data//hospitalization.csv")%>%mutate(date=lubridate::as_date(date))
+    occupied_regions <- read.csv("www//data//occupied_territories.csv")%>%mutate(date=lubridate::as_date(date))
     
     
     tracking_r <- read.csv("www//data//tracking_r.csv")%>%mutate(Date=lubridate::as_date(Date))
@@ -773,6 +775,35 @@ server <- function(input, output, session) {
                             opts_sizing(rescale = TRUE) ) 
       )
     )
+    
+    
+    ##################################
+    #### Occupied regions
+    #################################
+    
+    occupied_regions  <- 
+      occupied_regions %>%
+      mutate(roll_7= rollmean(new_cases, 7, align = "right", fill = NA))%>%
+      ggplot()+
+      geom_col_interactive(aes(date, new_cases, tooltip = paste0(date, ": ", round(new_cases, 0)),
+                               data_id = new_cases), size=0.4,
+                           color=NA, fill = "orange", alpha=0.5)+
+      geom_line(aes(date, roll_7), size=1, color="orange")+
+      facet_grid(~regions)+
+      scale_x_date(date_labels = "%m/%Y")+
+      theme_nn()
+    
+    print(occupied_regions)
+    
+    output$occupied_regions <- renderGirafe(
+      girafe(ggobj = occupied_regions+
+               xlab(i18n$t("თვეები"))+
+               ylab(i18n$t("ახალი შემთხვევები")),
+             options = list(opts_tooltip(css = tooltip_css),
+                            opts_sizing(width = .7) ) #
+      )
+    )
+    
     ##################################
     #### Other indicators
     #################################
