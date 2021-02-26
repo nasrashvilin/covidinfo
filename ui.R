@@ -48,6 +48,8 @@ ui <- fluidPage(
                tabName = "tests"),
       menuItem(h5(i18n$t("ჰოსპიტალიზაცია"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
                tabName = "hospitalization"),
+      menuItem(h5(i18n$t("ოკუპირებული რეგიონები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+               tabName = "occupied_regions"),
       menuItem(h5(i18n$t("სხვა ინდიკატორები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
                tabName = "other_indicators"),
       # menuItem(h5(i18n$t("შედარება"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
@@ -218,6 +220,18 @@ tabItem(
       tabPanel(h5(i18n$t("ჰოსპიტალიზაცია, 1000 მოსახლეზე"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("thous_hospitalized_ch", height = 400)),
       tabPanel(h5(i18n$t("მძიმე პაციენტები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("critical_ch", height = 400)),
       tabPanel(h5(i18n$t("პაციენტები მართვით სუნთქვაზე"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("ventil_ch", height = 400))
+    )
+    
+  )
+),
+tabItem(
+  tabName = "occupied_regions",
+  fluidRow(
+    tabBox(
+      height = "500",
+      width = 12,
+     tabPanel(h5(i18n$t("ახალი შემთხვევები ოკუპირებულ რეგიონებში"), #do we need the name?
+		 style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("occupied_regions", height = 400))
     )
     
   )
