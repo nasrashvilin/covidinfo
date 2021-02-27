@@ -48,6 +48,9 @@ ui <- fluidPage(
                tabName = "tests"),
       menuItem(h5(i18n$t("ჰოსპიტალიზაცია"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
                tabName = "hospitalization"),
+	    #sidebar for occupied territories
+      menuItem(h5(i18n$t("ოკუპირებული რეგიონები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
+               tabName = "occupied_territories"),
       menuItem(h5(i18n$t("სხვა ინდიკატორები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
                tabName = "other_indicators"),
       # menuItem(h5(i18n$t("შედარება"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"),
@@ -219,6 +222,19 @@ tabItem(
       tabPanel(h5(i18n$t("მძიმე პაციენტები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("critical_ch", height = 400)),
       tabPanel(h5(i18n$t("პაციენტები მართვით სუნთქვაზე"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), girafeOutput("ventil_ch", height = 400))
     )
+    
+  )
+),
+	
+tabItem(
+  tabName = "occupied_territories",
+  fluidRow(
+    tabBox(
+      height = "700", #ზომები რომ გავზარდოთ და გვერდზე ჰორიზონტალური სივრცე სრულად აითვისოს?
+      width = 25,
+      tabPanel(h5(i18n$t("ოკუპირებული რეგიონები"), style="font-size: '4px'; font-family: 'BPG_upper'; text-transform: uppercase;"), 
+	       girafeOutput("occupied_territories", height = 400)),
+      )
     
   )
 ),
