@@ -477,8 +477,8 @@ server <- function(input, output, session) {
     })
     
     output$cumulative_tests <- renderValueBox({
-      valueBox(
-        paste0(count_total_tests()), i18n$t("ტესტები"), icon = icon("vial"),
+      valueBox( 
+        paste0(max(total$total_test), i18n$t("ტესტები"), icon = icon("vial"),
         color = "olive"
       )
     })
@@ -493,7 +493,7 @@ server <- function(input, output, session) {
     
     
     count_total_cases <- renderText({
-      sum(detailed$new_cases)
+      max(detailed$total)
     })
     
     count_pop_share <- renderText({
@@ -505,7 +505,7 @@ server <- function(input, output, session) {
     })
     
     count_total_recovered <- renderText({
-      sum(detailed$new_recoveries)
+      sum(detailed$total_rec)
     })
     
     count_total_hospitalized <- renderText({
