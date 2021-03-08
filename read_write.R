@@ -20,7 +20,7 @@ occupied_territories <- read_excel("www//data//src.xlsx", "occupied_territories"
 total <- write.csv(total, "www//data//total.csv", row.names = F)
 detailed <- write.csv(detailed, "www//data//detailed.csv", row.names = F)
 regions <- write.csv(regions, "www//data//regions.csv", row.names = F)
-occupied_territories <- write.csv(hospitalization, "www//data//occupied_territories.csv", row.names = F)
+occupied_territories <- write.csv(occupied_territories, "www//data//occupied_territories.csv", row.names = F)
 
 
 ### Facebook humanitarian mobility data
